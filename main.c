@@ -15,6 +15,8 @@ int lsh_cd(char **args);
 int lsh_exit(char **args);
 int lsh_help(char **args);
 int lsh_execute_command(char** args);
+void check_lsh_lshrc();
+void lsh_run_bash_config(const char *filepath);
 
 /**
  * Function declarations for builtin shell commands
@@ -46,6 +48,7 @@ int lsh_num_builtins() {
 /*-----------------------------------------------*/
 int main(int args, char **argv) {
     // Load config files, if any
+    check_lsh_lshrc();    
 
     // Run command loop
     lsh_loop();
@@ -56,9 +59,49 @@ int main(int args, char **argv) {
 }
 /*-------------------------------------------------*/
 
+/**
+ * The function checks the existence of config file lshrc from the system,
+ * else it runs the default file from the project.
+ */
+void check_lsh_lshrc() {
+    const char *home = getenv("HOME");
+    if (!home) {
+        perror("getenv failed");
+        return;
+    }
+
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/.lshrc", home);
+
+    if (access(path, F_OK) == 0) {
+        lsh_run_bash_config(path);
+    } else {
+        lsh_run_bash_config("lshrc");
+    }
+}
 
 /**
- * Handling multiple commands.
+ * The function runs a file in Bash.
+ */
+void lsh_run_bash_config(const char *filepath) {
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process: run the file using bash
+        execl("/bin/bash", "bash", filepath, NULL);
+        perror("execl failed");
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        // Parent process: wait for bash to finish
+        int status;
+        waitpid(pid, &status, 0);
+    } else {
+        perror("fork failed");
+    }
+}
+
+/**
+ * Handling the commands from terminal.
  */
 void lsh_loop(void) {
     char *line;
@@ -97,7 +140,7 @@ char* lsh_read_line(void) {
 
 /**
  * Tokenise the line. We'll assume that the delimiter between words
- * will be just white space.
+ * will be just whitespace.
  */
 char** lsh_parse_line(char* line) {
     int size = TOK_SIZE;

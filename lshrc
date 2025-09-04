@@ -1,0 +1,4 @@
+# This file will be executed by Bash before the shell starts
+echo ">>> Loading LSH config..."
+date
+echo "Welcome to Marius's LSH!"
