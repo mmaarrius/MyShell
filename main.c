@@ -1,18 +1,12 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include "builtin.h"
-
-#define LINE_SIZE 1024
-#define TOK_SIZE 64
-#define TOK_DELIM " \n\r\t\a"
+#include "utils.h"
 
 void lsh_loop(void);
-char *lsh_read_line();
-char **lsh_parse_line(char *line);
 int lsh_execute_command(char **args);
 void check_lsh_lshrc();
 void lsh_run_bash_config(const char *filepath);
@@ -20,8 +14,8 @@ void lsh_run_bash_config(const char *filepath);
 /*-----------------------------------------------*/
 int main(int argc, char **argv)
 {
-    (void)argc; // Suppress unused parameter warning
-    (void)argv; // Suppress unused parameter warning
+    (void)argc;
+    (void)argv;
     // Load config files, if any
     check_lsh_lshrc();
 
@@ -105,107 +99,6 @@ void lsh_loop(void)
         free(line);
         free(args);
     } while (status);
-}
-
-/**
- * Read the line
- */
-char *lsh_read_line(void)
-{
-    __ssize_t size = 0;
-    char *line = NULL;
-
-    if (getline(&line, &size, stdin) == -1)
-    {
-        if (feof(stdin))
-        {
-            exit(EXIT_SUCCESS);
-        }
-        else
-        {
-            perror("reading line");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    return line;
-}
-
-/**
- * Tokenise the line. We'll assume that the delimiter between words
- * will be just whitespace.
- */
-char **lsh_parse_line(char *line)
-{
-    int size = TOK_SIZE;
-    char **tokens = malloc(size * sizeof(char *));
-    char *token;
-    int position = 0;
-
-    if (!tokens)
-    {
-        fprintf(stderr, "allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    token = strtok(line, TOK_DELIM);
-    while (token)
-    {
-        tokens[position++] = token;
-
-        if (position >= size)
-        {
-            size *= 2;
-            tokens = realloc(tokens, size * sizeof(char *));
-
-            if (!tokens)
-            {
-                fprintf(stderr, "allocation error\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        token = strtok(NULL, TOK_DELIM);
-    }
-
-    tokens[position] = NULL;
-    return tokens;
-}
-
-/**
- * The function performs if the process isn't a shell command
- */
-int lsh_launch(char **args)
-{
-    pid_t pid, wpid;
-    int status;
-
-    pid = fork();
-    if (pid == 0)
-    {
-        // Child process
-        if (execvp(args[0], args) == -1)
-        {
-            // All below this line is executed if the command fails
-            perror("error executing command");
-        }
-        exit(EXIT_FAILURE);
-    }
-    else if (pid < 0)
-    {
-        perror("error executing command");
-    }
-    else
-    {
-        // Parent process
-        do
-        {
-            // The parent will keep waiting even if the child process is temporarily stopped
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-
-    return 1;
 }
 
 int lsh_execute_command(char **args)

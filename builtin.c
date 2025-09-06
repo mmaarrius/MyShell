@@ -50,6 +50,8 @@ int lsh_cd(char **args)
 
 int lsh_help(char **args)
 {
+    (void)args;
+
     printf("Marius Popa's LSH\n");
     printf("Type program names and arguments, and hit enter.\n");
     printf("The following are built in:\n");
@@ -65,5 +67,6 @@ int lsh_help(char **args)
 
 int lsh_exit(char **args)
 {
+    (void)args;
     return 0;
 }
